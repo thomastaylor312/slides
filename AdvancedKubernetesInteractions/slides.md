@@ -1,8 +1,9 @@
 class: middle, center
 # Advanced Interactions with Kubernetes
 ### As Taught by Helm
-#### Taylor Thomas 
-##### Senior Software Engineer at Microsoft Azure
+##### Taylor Thomas - Senior Software Engineer at Microsoft Azure
+
+.footnote[Cloud Native Rejekts San Diego 2019]
 
 ???
 
@@ -24,13 +25,12 @@ class: middle, center
 # Topics
 
 - Handling multiple API versions
-- Properly using and retrieving the correct statuses of objects
+- Using object statuses
 - 3 way patching
 - Object building (including unstructured types and how to convert them)
 - Validation
-- Discovery client and cache invalidation
+- Discovery client and cache
 - A brief review of the more obtuse/little-known k8s packages
-
 
 ???
 
@@ -39,3 +39,104 @@ class: middle, center
   over them at your lesiure later
 - I plan to stop briefly for questions at the end of each topic so you don't
   have to hold on to them as we go through the rest of the topics
+
+---
+
+# Multiple API Versions
+
+---
+
+# Using object statuses
+#### Some examples from `--wait`
+
+---
+
+# Using object statuses
+#### Gotchas, caveats, provisos
+
+???
+
+TODO: Talk about how ingress status doesn't work like you think
+
+---
+
+# 3-way patches
+
+???
+
+This is simpler than you might think
+
+---
+
+# Object Building
+#### Unstructured vs. Structured
+
+???
+
+TODO: Make sure to note schema registration
+
+---
+
+# Object Building
+#### Conversion
+
+---
+
+# Validation
+
+???
+
+TODO: Figure out if a CRD validation example is needed
+
+---
+
+# Discovery Client and Cache
+#### Under the hood details
+
+???
+
+TODO: Review the various parts of the code and what it is doing to cache things
+
+---
+
+# Discovery Client and Cache
+#### Cache invalidation
+
+???
+
+TODO: Answer why you'd want to invalidate the discovery cache
+
+---
+
+## Little Known Kubernetes Packages
+#### k8s.io/kubernetes/deployment/util
+
+???
+
+TODO: Show the Helm code we copied over
+
+---
+
+## Little Known Kubernetes Packages
+#### sigs.k8s.io/yaml
+
+---
+
+## Little Known Kubernetes Packages
+#### k8s.io/cli-runtime/pkg/resource
+
+???
+
+TODO: Talk about the flexibility of this package
+
+---
+
+## Little Known Kubernetes Packages
+#### k8s.io/cli-runtime/pkg/genericclioptions
+
+---
+
+class: middle, center
+# Thank You
+
+### [https://slides.oftaylor.com/AdvancedKubernetesInteractions/](https://slides.oftaylor.com/AdvancedKubernetesInteractions/)
