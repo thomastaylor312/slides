@@ -1,0 +1,10 @@
+title: "Advanced Interactions with Kubernetes (As Taught by Helm)"
+dest: "docs"
+remarkConfig: 
+  ratio: "16:9"
+  navigation:
+    scroll: false
+  slideNumberFormat: "%current%/%total%"
+  highlightLanguage: "go"
+  highlightStyle: "monokai"
+  highlightLines: true
