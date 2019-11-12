@@ -44,13 +44,113 @@ class: middle, center
 
 # Multiple API Versions
 
----
+- This is probably much more simple than you think it would be
+--
+count: false
 
+- The answer? Use the most recent version of the API
+
+???
+
+- This applies to both built in k8s types and CRDs (k8s does conversion
+  underneath the hood)
+
+--
+count: false
+```go
+switch value := AsVersioned(v).(type) {
+case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
+    currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(v.Name, metav1.GetOptions{})
+    if err != nil {
+        return false, err
+    }
+...
+}
+```
+
+???
+
+- However, you can also do cool things like this with a raw `runtime.Object`
+
+---
+layout: true
 # Using object statuses
 #### Some examples from `--wait`
 
 ---
 
+- Be warned: Statuses are a bit of a hairy mess
+- Always check the [Kubernetes API Reference]() for specific definitions on all
+  status fields
+
+???
+
+- They can be a bit messy, but that is why I have some examples for you, from
+  Helm's wait logic
+- There could be various things you want to do with status objects, so I am
+  going to focus on what the fields in each status indicate
+
+---
+
+##### Deployments
+
+```go
+// If paused deployment will never be ready
+*if currentDeployment.Spec.Paused {
+    continue
+}
+// Find RS associated with deployment
+newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+if err != nil || newReplicaSet == nil {
+    return false, err
+}
+```
+
+???
+
+- This is the code that actually gets the most current replica set and checks
+  for a few other things
+- One of the important things to note is that often you have to check both the
+  Spec and the Status to ascertain the true status of the object
+
+---
+
+##### Deployments
+
+```go
+func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
+	if !(rs.Status.ReadyReplicas >= expectedReady) {
+		w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
+		return false
+	}
+	return true
+}
+```
+
+???
+
+- The code is the actual check and is fairly simple. I'll cover what is
+  in deployment util later on
+- In a classic case of "who wrote this code?! Oh, it's me," I can't remember why
+  we don't use a combination of the `unavailableReplicas` and `readyReplicas`
+  fields, but I think there is a reason about what is getting updated. Basically
+  this may end up with me re-writing this code block
+
+---
+
+##### DaemonSets
+
+---
+
+##### StatefulSets
+
+---
+
+##### Services
+
+---
+layout: false
 # Using object statuses
 #### Gotchas, caveats, provisos
 
@@ -107,8 +207,12 @@ TODO: Review the various parts of the code and what it is doing to cache things
 TODO: Answer why you'd want to invalidate the discovery cache
 
 ---
+layout: true
 
 ## Little Known Kubernetes Packages
+
+---
+
 #### k8s.io/kubernetes/deployment/util
 
 ???
@@ -117,12 +221,10 @@ TODO: Show the Helm code we copied over
 
 ---
 
-## Little Known Kubernetes Packages
 #### sigs.k8s.io/yaml
 
 ---
 
-## Little Known Kubernetes Packages
 #### k8s.io/cli-runtime/pkg/resource
 
 ???
@@ -131,11 +233,15 @@ TODO: Talk about the flexibility of this package
 
 ---
 
-## Little Known Kubernetes Packages
 #### k8s.io/cli-runtime/pkg/genericclioptions
 
 ---
 
+#### TODO: Maybe scheme registration?
+
+---
+
+layout: false
 class: middle, center
 # Thank You
 
