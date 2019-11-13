@@ -54,7 +54,7 @@ class: middle, center
 # Multiple API Versions
 
 - This is probably much more simple than you think it would be
---
+  --
 count: false
 
 - The answer? Use the most recent version of the API
@@ -130,21 +130,22 @@ if err != nil || newReplicaSet == nil {
 
 ```go
 func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
-	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
-	if !(rs.Status.ReadyReplicas >= expectedReady) {
-		w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
-		return false
-	}
-	return true
+    expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
+    if !(rs.Status.ReadyReplicas >= expectedReady) {
+        w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
+        return false
+    }
+    return true
 }
 ```
 
-- You can tell if a `Deployment` is ready by: number of `ReadyReplicas` in the new `ReplicaSet` == The number you want
+- You can tell if a `Deployment` is ready by: number of `ReadyReplicas` in the
+  new `ReplicaSet` == The number you want
 
 ???
 
-- The code is the actual check and is fairly simple. I'll cover what is
-  in deployment util later on
+- The code is the actual check and is fairly simple. I'll cover what is in
+  deployment util later on
 - In a classic case of "who wrote this code?! Oh, it's me," I can't remember why
   we don't use a combination of the `unavailableReplicas` and `readyReplicas`
   fields, but I think there is a reason about what is getting updated. Basically
@@ -454,29 +455,157 @@ Patch("the name", types.StrategicMergePatchType, patch)
   the clientset have the same signature as shown here
 
 ---
-layout: false
+layout: true
+# Validation
+
+---
+
+- The short way of getting a validator is to use a `Factory` from
+  `k8s.io/kubectl/pkg/cmd/util`
+- However, for our own enjoyment, let's take a look at how to use validation
+  manually
+
+???
+- We'll look at how the factory generates 
+
+---
+#### Packages to know about
+- `k8s.io/kubectl/pkg/util/openapi`
+- `openapivalidation "k8s.io/kubectl/pkg/util/openapi/validation"`
+- `k8s.io/kubectl/pkg/validation`
+
+---
+
+```go
+func (f *factoryImpl) OpenAPISchema() (openapi.Resources, error) {
+    discovery, err := f.clientGetter.ToDiscoveryClient()
+    if err != nil {
+        return nil, err
+    }
+
+    // Lazily initialize the OpenAPIGetter once
+    f.openAPIGetter.once.Do(func() {
+        // Create the caching OpenAPIGetter
+        f.openAPIGetter.getter = openapi.NewOpenAPIGetter(discovery)
+    })
+
+    // Delegate to the OpenAPIGetter
+    return f.openAPIGetter.getter.Get()
+}
+```
+
+???
+
+- First off, how to get the OpenAPI data
+- Please note that this `once` thing looks complicated. If you wanted to do it
+  yourself, you probably wouldn't need to worry about this
+- Note the use of the discovery client here. You'll have to have one
+  constructed. Everyone know what the discovery client does?
+
+---
+
+```go
+func (f *factoryImpl) Validator(validate bool) (validation.Schema, error) {
+    if !validate {
+        return validation.NullSchema{}, nil
+    }
+
+    resources, err := f.OpenAPISchema()
+    if err != nil {
+        return nil, err
+    }
+
+    return validation.ConjunctiveSchema{
+        openapivalidation.NewSchemaValidation(resources),
+        validation.NoDoubleKeySchema{},
+    }, nil
+}
+```
+
+???
+- Basically, no validation is as easy as using the NullSchema
+- The last step is "joining" the two schemas together
+- The schemas you see here are all of the ones that are exposed, however there
+  is a simple interface to implement if you have some advanced custom schema you
+  wish to use
+
+---
+layout: true
 # Object Building
+
+---
 #### Unstructured vs. Structured
+
+- "Structured" objects are exactly what you'd think they are: concrete
+  Kubernetes object types
+- Kubernetes approaches "generic" objects through the use of something called
+  "unstructured" objects
+
+---
+#### Unstructured vs. Structured 
+
+```go
+type Unstructured interface {
+    Object
+    // NewEmptyInstance returns a new instance of the concrete type containing only kind/apiVersion and no other data.
+    // This should be called instead of reflect.New() for unstructured types because the go type alone does not preserve kind/apiVersion info.
+    NewEmptyInstance() Unstructured
+    // UnstructuredContent returns a non-nil map with this object's contents. Values may be
+    // []interface{}, map[string]interface{}, or any primitive type. Contents are typically serialized to
+    // and from JSON. SetUnstructuredContent should be used to mutate the contents.
+    UnstructuredContent() map[string]interface{}
+    // SetUnstructuredContent updates the object content to match the provided map.
+    SetUnstructuredContent(map[string]interface{})
+    // IsList returns true if this type is a list or matches the list convention - has an array called "items".
+    IsList() bool
+    // EachListItem should pass a single item out of the list as an Object to the provided function. Any
+    // error should terminate the iteration. If IsList() returns false, this method should return an error
+    // instead of calling the provided function.
+    EachListItem(func(Object) error) error
+}
+```
+
+???
+- Unstructured objects are technically a go interface that looks like this.
+- It wraps a traditional Object and contains the raw data for an object
+- This is useful for CRD instances or if you don't care about having the actual
+  objects
+
+---
+#### Building Objects from Manifests
+
+- `k8s.io/cli-runtime/pkg/resource`
+
+```go
+builder := resource.NewBuilder(getter)
+infos, err := builder.ContinueOnError().
+        NamespaceParam(namespace).
+        DefaultNamespace().
+        Flatten().
+        Unstructured(). // Only if you want unstructured
+        Schema(schema).
+        Stream(reader, "").
+        Do().Infos()
+```
+
+???
+- This is the package that you'll use to build objects from a stream of incoming
+  documents
+- It is probably one of the more funky Go things you'll see
+- You need to pass a getter that implements the RESTClientGetter interface,
+  which we'll cover later on
+- Let's step through each one of these functions
+
+---
+
+#### Conversion
 
 ???
 
 TODO: Make sure to note schema registration
 
 ---
-
-# Object Building
-#### Conversion
-
----
-
-# Validation
-
-???
-
-TODO: Figure out if a CRD validation example is needed
-
----
-
+layout: false
 # Discovery Client and Cache
 #### Under the hood details
 
@@ -524,7 +653,7 @@ TODO: Talk about the flexibility of this package
 
 ---
 
-### k8s.io/apimachinery/pkg/util/intstr
+#### k8s.io/apimachinery/pkg/util/intstr
 
 ???
 - This is a handy little utility for converting all of those fields that can be
@@ -536,8 +665,7 @@ TODO: Talk about the flexibility of this package
 
 ---
 
-layout: false
-class: middle, center
+layout: false class: middle, center
 # Thank You
 
 ### [https://slides.oftaylor.com/AdvancedKubernetesInteractions/](https://slides.oftaylor.com/AdvancedKubernetesInteractions/)
