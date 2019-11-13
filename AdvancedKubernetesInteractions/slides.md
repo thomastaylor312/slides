@@ -309,15 +309,152 @@ count: false
   it does 98% of the time
 
 ---
-
+layout: true
 # 3-way patches
-
-???
-
-This is simpler than you might think
 
 ---
 
+- `k8s.io/apimachinery/pkg/util/strategicpatch`
+- `k8s.io/apimachinery/pkg/types`
+
+???
+- First thing to know about are these two packages. The strategic patch utility
+  has some super handy functions for generating patch objects to send to the
+  kubernetes API and the types package contains the constants for the various
+  patch types. You'll see these referenced in the next slides
+
+---
+
+???
+
+- We have a handy function called `createPatch` in Helm that helps us do this.
+  So let's break down the steps to creating a 3-way patch
+
+--
+count: false
+
+```go
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+    oldData, err := json.Marshal(current)
+    if err != nil {
+        return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
+    }
+    newData, err := json.Marshal(target.Object)
+    if err != nil {
+        return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
+    }
+```
+
+???
+- This function is generic and works for any kubernetes type. I'll dig deeper
+  into the resource package later on, but an `Info` is a pretty helpful wrapper
+  around a standard `runtime.Object` that contains a REST client configuration
+  used to update or fetch its data.
+- `current` in this function is the object that was originally used to create or
+  update its state in storage (such as a file on your machine)
+- The first step is to marshal all the data you have out to JSON so it can be
+  used to create a JSON patch
+
+---
+
+```go
+helper := resource.NewHelper(target.Client, target.Mapping)
+currentObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+if err != nil && !apierrors.IsNotFound(err) {
+    return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
+}
+
+currentData, err := json.Marshal(currentObj)
+if err != nil {
+    return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
+}
+```
+
+???
+- This next block is where we fetch the current state of the object. `NewHelper`
+  is part of the resource package and just creates a new client. However, if you
+  are just using the plain `Get` methods of the Kubernetes clientset, you'll
+  need to strip off the status object and a few other fields because you can't
+  specify the export options with `Get`
+- When you are fetching the current data, generally it is ok if it is not found.
+  Generally that means the object was unintentionally deleted or was never
+  created
+- Once you have the data, you also marshal that out to JSON
+
+---
+##### WARNING: Super Advanced
+
+```go
+// Get a versioned object
+versionedObject := AsVersioned(target)
+
+if _, ok := versionedObject.(runtime.Unstructured); ok {
+    // fall back to generic JSON merge patch
+    patch, err := jsonpatch.CreateMergePatch(oldData, newData)
+    return patch, types.MergePatchType, err
+}
+```
+
+???
+
+- As noted, this is a super advanced use case that probably 90% of you will
+  never need, but it is extremely useful for the 10% who do. So I put it in here
+  for people to reference.
+- `AsVersioned` does some magic to make sure we have a structured kubernetes
+  object. I'll cover how build and version objects in the next section 
+- Unstructured objects, such as CRDs, may not have an not registered error
+  returned from ConvertToVersion. Anything that's unstructured should use the
+  jsonpatch.CreateMergePatch which is just a simple two way merge. Strategic
+  Merge Patch is not supported on objects like CRDs.
+
+--
+count: false
+
+```go
+versionedObject := target.Object.(*appsv1.Deployment)
+```
+
+???
+- If you aren't using the advanced use case, you should just type assert your
+  object as shown here. You will need a typed object for the next step
+
+---
+
+```go
+patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
+if err != nil {
+    return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
+}
+
+patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
+```
+
+???
+- The patch metadata generation is what requires a versioned object. This is
+  because under the hood it is doing some reflection to figure out the kind
+- The last step is actual patch generation where you pass your original/old
+  data, the new desired state, and the current state of the object (in that
+  order) and the generated patch metadata. The boolean parameter specifies if
+  you want to overwrite keys that already exist
+
+---
+
+```go
+if patch == nil || string(patch) == "{}"
+```
+
+```go
+Patch("the name", types.StrategicMergePatchType, patch)
+```
+
+???
+- Two final notes here. First off, one of the nice things about doing things
+  with a patch is that you can do this check to see if there were no changes
+- That last thing is the actual patch creation. All of the `Patch` methods on
+  the clientset have the same signature as shown here
+
+---
+layout: false
 # Object Building
 #### Unstructured vs. Structured
 
