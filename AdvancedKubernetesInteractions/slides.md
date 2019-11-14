@@ -54,7 +54,7 @@ class: middle, center
 # Multiple API Versions
 
 - This is probably much more simple than you think it would be
-  --
+--
 count: false
 
 - The answer? Use the most recent version of the API
@@ -600,27 +600,137 @@ infos, err := builder.ContinueOnError().
 
 #### Conversion
 
-???
+```go
+func AsVersioned(info *resource.Info) runtime.Object {
+	return convertWithMapper(info.Object, info.Mapping)
+}
 
-TODO: Make sure to note schema registration
+func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Object {
+	var gv = runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
+	if mapping != nil {
+		gv = mapping.GroupVersionKind.GroupVersion()
+	}
+	if obj, err := runtime.ObjectConvertor(scheme.Scheme).ConvertToVersion(obj, gv); err == nil {
+		return obj
+	}
+	return obj
+}
+```
+
+???
+- In Helm, we have this `AsVersioned` method. It is specifically designed for
+  the resource Infos you've been seeing, but it can easily be designed for more
+  generic usage
+- The GroupVersioner interface can be taken from any group version kind or you
+  can use the default like we do here using `runtime.GroupVersioner`
+- Please note the use of scheme and schema here, which leads to a caveat
 
 ---
-layout: false
+#### Conversion: A caveat
+
+```go
+import(
+    apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+    "k8s.io/client-go/kubernetes/scheme"
+)
+
+func yourClientCreate() {
+    if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+        // This should never happen.
+        panic(err)
+    }
+    ...
+}
+```
+
+???
+
+- When you are using scheme, you have to make sure types are registered. If you
+  are handling CRDs, they are not part of the schema by default, so you'll
+  definitely need to add things to the schema like so
+- In Helm we are registering things when we create our client, though you can do
+  it where you want too
+- Registering to the scheme is global
+
+---
+layout: true
 # Discovery Client and Cache
+
+---
 #### Under the hood details
 
+- You can find the packages it uses in `k8s.io/client-go/discovery/cached`
+- There are two options to cache data: disk and in-memory. Disk is the default
+- If using disk, it will create a cache path for your specfic server like so:
+  `computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache",
+  "discovery"), config.Host)`
+
+???
+- The compute cache dir function uses the server host name and collapses any
+  non-supported characters into a name that will likely not collide. So you can
+  go look in your home dir and find these caches if you wanted to
+
+--
+
+```go
+wg := &sync.WaitGroup{}
+resultLock := &sync.Mutex{}
+for _, apiGroup := range apiGroups.Groups {
+    for _, version := range apiGroup.Versions {
+        groupVersion := schema.GroupVersion{Group: apiGroup.Name, Version: version.Version}
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            defer utilruntime.HandleCrash()
+
+            apiResourceList, err := d.ServerResourcesForGroupVersion(groupVersion.String())
+```
+
 ???
 
-TODO: Review the various parts of the code and what it is doing to cache things
+- So under the hood, if you have an empty cache, it will make calls to every
+  single API endpoint (starting with the top level `/apis` call, which lists all
+  available APIs) to discover what APIs are available. This is used for
+  validation and constructing clients. But note that it is a bit heavier on the
+  server than you'd think
 
 ---
-
-# Discovery Client and Cache
 #### Cache invalidation
+
+- Reasons to invalidate your cache:
+  - New CRD installed (probably the most common)
+  - API server upgrade
+  - New API Extension or any other type of extension point that adds an API
+    version
+- How do you do it?
+
+```go
+discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+if err != nil {
+    return err
+}
+discoveryClient.Invalidate()
+// Give time for the CRD to be recognized.
+if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+    return err
+}
+// Make sure to force a rebuild of the cache.
+discoveryClient.ServerGroups()
+```
 
 ???
 
-TODO: Answer why you'd want to invalidate the discovery cache
+- So why would you want to invalidate the cache? In Helm we do it explicitly
+  after installing a CRD because otherwise Helm has an invalid list of API
+  versions, which makes its job of validating difficult
+- Luckily, it is extremely simple to do this if you have a cached discovery
+  client available (which is generally the standard client available). If, as
+  part of your code, you are adding the new CRD or API version, you should wait
+  for the CRD to reach an `Established` state. 
+- Then you should call something that will rebuild the cache for you (like
+  `ServerGroup`). Why? Because if you use your clientset elsewhere by
+  reconstructing it, the "invalidated" flag will be unset and it will use the
+  old cache if it hasn't expired
 
 ---
 layout: true
@@ -628,44 +738,84 @@ layout: true
 ## Little Known Kubernetes Packages
 
 ---
+#### k8s.io/kubernetes/pkg/controller/deployment/util
 
-#### k8s.io/kubernetes/deployment/util
+- This is one of many useful util packages in the controllers package
+- Other helpful functions include:
+  - `DeploymentComplete`: Returns true if _all_ of the new pods are running
+  - `ListPods`: lists all the pods the deployment targets
+  - `Max*`: Functions that get the computed values for things like surge, max
+    unavailable, etc.
+- One big con to keep in mind: You'll be pulling in mainline k8s as a dependency
 
 ???
 
-TODO: Show the Helm code we copied over
+- Most of the other controllers like `DaemonSets` and `PersistentVolumes` have
+  util packages
+- You saw how we used it to get `MaxUnavailable` and the latest replica set, but
+  here are some of the other helpful functions there
 
 ---
-
 #### sigs.k8s.io/yaml
+
+- A fork of `github.com/ghodss/yaml` optimized for kubernetes marshalling and
+  unmarshalling
+- It can also convert YAML to JSON and JSON to YAML
 
 ---
 
 #### k8s.io/cli-runtime/pkg/resource
 
+- Contains several helpful methods and objects for handling RESTful calls to get
+  Kubernetes (or even Kubernetes-like) objects:
+  - `Info`: A Kubernetes object wrapper that contains all the information to
+    make API calls for the object
+  - `Visitor`: A way to iterate over a generic list of Kubernetes objects
+  - `Helper`: Generic client for fetching resources using REST calls
+
 ???
 
-TODO: Talk about the flexibility of this package
+- If you are looking for flexibility in how you handle your kubernetes objects.
+  This is the package you are looking for
+- `Info` is extremely useful as it can handle typed or untyped objects
 
 ---
-
 #### k8s.io/cli-runtime/pkg/genericclioptions
+
+- An alternate way to get a clientset
+- `ConfigFlags` is your friend. 
+  - You can use `NewConfigFlags(true)` to get the `RESTClientGetter`
+  - `getter.ToRESTConfig()` then gives you the config needed to set up a
+    clientset
+
+???
+- You saw this package pop up multiple times in previous examples, but
+  essentially it is an alternate way to get a clientset, although with some
+  other helpful options
+- There are plenty of other things in this package you can take a look at, but
+  one of the most useful in my opinion is the `ConfigFlags` type.
+- The nice thing about using this package over the `clientcmd` package in
+  client-go is that you have much more flexibility and options. Easy access to
+  REST meta mappings and it can be used directly with the `resource` package we
+  just looked at
 
 ---
 
 #### k8s.io/apimachinery/pkg/util/intstr
 
+- `GetValueFromIntOrPercent`: A nice shorthand to parse out a computed int value
+- Or, you can use `Parse` on a string value to get the `IntOrString` type that
+  has even more methods
+
 ???
+- I'll end with the most simple, but still useful package
 - This is a handy little utility for converting all of those fields that can be
   an int value or a string in YAML
 
 ---
 
-#### TODO: Maybe scheme registration?
-
----
-
-layout: false class: middle, center
+layout: false 
+class: middle, center
 # Thank You
 
 ### [https://slides.oftaylor.com/AdvancedKubernetesInteractions/](https://slides.oftaylor.com/AdvancedKubernetesInteractions/)

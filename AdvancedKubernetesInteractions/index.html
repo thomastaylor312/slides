@@ -31,10 +31,19 @@ h1, h2, h3 {
 
 .footnote[Cloud Native Rejekts San Diego 2019]
 
+---
+# Who am I?
+
+- Senior Software Engineer in Microsoft Azure
+- Helm Core Maintainer
+- GitHub: [@thomastaylor312](https://github.com/thomastaylor312)
+- Twitter: [@_oftaylor](https://twitter.com/_oftaylor)
+- Kubernetes Slack: @oftaylor
+
 ???
 
 - I'm a software engineer at Azure primarily working on Helm, but also some
-  other open source projects
+  other open source projects. I used to work on AKS as well
 - So why listen to me?
 - Been a core maintainer on Helm for 3 years
 - Done waaaaay too much work interacting with Kubernetes (going back to version
@@ -70,98 +79,768 @@ h1, h2, h3 {
 
 # Multiple API Versions
 
----
+- This is probably much more simple than you think it would be
+--
+count: false
 
+- The answer? Use the most recent version of the API
+
+???
+
+- This applies to both built in k8s types and CRDs (k8s does conversion
+  underneath the hood)
+
+--
+count: false
+```go
+switch value := AsVersioned(v).(type) {
+case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
+    currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(v.Name, metav1.GetOptions{})
+    if err != nil {
+        return false, err
+    }
+...
+}
+```
+
+???
+
+- However, you can also do cool things like this with a raw `runtime.Object`
+
+---
+layout: true
 # Using object statuses
 #### Some examples from `--wait`
 
 ---
 
+- Be warned: Statuses are a bit of a hairy mess
+- Always check the [Kubernetes API Reference]() for specific definitions on all
+  status fields
+
+???
+
+- They can be a bit messy, but that is why I have some examples for you, from
+  Helm's wait logic
+- There could be various things you want to do with status objects, so I am
+  going to focus on what the fields in each status indicate and things to watch
+  out for.
+- I'll be starting easy, and then progressing to harder ones with each example
+
+---
+
+##### Deployments
+
+```go
+// If paused deployment will never be ready
+if currentDeployment.Spec.Paused {
+    continue
+}
+// Find RS associated with deployment
+newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+if err != nil || newReplicaSet == nil {
+    return false, err
+}
+```
+
+???
+
+- This is the code that actually gets the most current replica set and checks
+  for a few other things
+- One of the important things to note is that often you have to check both the
+  Spec and the Status to ascertain the true status of the object
+
+---
+
+##### Deployments
+
+```go
+func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+    expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
+    if !(rs.Status.ReadyReplicas >= expectedReady) {
+        w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
+        return false
+    }
+    return true
+}
+```
+
+- You can tell if a `Deployment` is ready by: number of `ReadyReplicas` in the
+  new `ReplicaSet` == The number you want
+
+???
+
+- The code is the actual check and is fairly simple. I'll cover what is in
+  deployment util later on
+- In a classic case of "who wrote this code?! Oh, it's me," I can't remember why
+  we don't use a combination of the `unavailableReplicas` and `readyReplicas`
+  fields, but I think there is a reason about what is getting updated. Basically
+  this may end up with me re-writing this code block
+
+---
+
+##### DaemonSets
+
+```go
+// Make sure all the updated pods have been scheduled
+if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled {
+    w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", ds.Namespace, ds.Name, ds.Status.UpdatedNumberScheduled, ds.Status.DesiredNumberScheduled)
+    return false
+}
+```
+
+???
+
+- This is a super interesting (and I feel helpful) tidbit. These two fields in
+  the status help tell you if the updated spec is scheduled on all nodes.
+  Because the number of scheduled nodes can differ, these two are all you need
+  to reconstruct the current scheduling status of a DaemonSet (which sometimes
+  takes a bit, given that many heavy admin processes in a cluster use a DS)
+
+---
+
+##### DaemonSets
+
+```go
+maxUnavailable, err := intstr.GetValueFromIntOrPercent(ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, int(ds.Status.DesiredNumberScheduled), true)
+if err != nil {
+    // If for some reason the value is invalid, set max unavailable to the
+    // number of desired replicas. This is the same behavior as the
+    // `MaxUnavailable` function in deploymentutil
+    maxUnavailable = int(ds.Status.DesiredNumberScheduled)
+}
+
+expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
+if !(int(ds.Status.NumberReady) >= expectedReady) {
+    w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods are ready", ds.Namespace, ds.Name, ds.Status.NumberReady, expectedReady)
+    return false
+}
+
+```
+- You can tell if a `DaemonSet` is ready by: `UpdatedNumberScheduled` ==
+  `DesiredNumberScheduled` && `NumberReady` == The number you want
+
+???
+
+- Here you'll see the use of some of the same fields we used before. Note again
+  the need to reach into the spec if you want to introspect some more
+- We also use an interesting k8s util called `intstr`, which I'll go more into
+  later
+- The other major field here is `NumberReady`, which shows the actual number of
+  running pods. However, this number also includes pods with the old spec that
+  are still running and ready
+- Like I said before, the summary here is that you need to put a bunch of the
+  information together from an object status to know programmatically the
+  current state
+
+---
+
+##### StatefulSets
+
+The intricacies of the `partition`
+
+```go
+var partition int
+// 1 is the default for replicas if not set
+var replicas = 1
+// For some reason, even if the update strategy is a rolling update, the
+// actual rollingUpdate field can be nil. If it is, we can safely assume
+// there is no partition value
+if sts.Spec.UpdateStrategy.RollingUpdate != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+    partition = int(*sts.Spec.UpdateStrategy.RollingUpdate.Partition)
+}
+if sts.Spec.Replicas != nil {
+    replicas = int(*sts.Spec.Replicas)
+}
+```
+
+???
+
+- Next up on the fun status things that can trip you up, let's talk about
+  `StatefulSets` and partitioning. Partitioning is used for times when you want
+  to roll out a canary to one or two nodes before updating the rest
+- First thing to know about  is that SO MANY fields are optional, so know that
+  the default expected replicas is 1 and the default partition is 0
+- Also, note the comment I have on that gnarly `if` statement. You can have a
+  null update strategy, even though all of the other objects always have one set
+
+---
+
+##### StatefulSets
+
+```go
+expectedReplicas := replicas - partition
+
+// Make sure all the updated pods have been scheduled
+if int(sts.Status.UpdatedReplicas) != expectedReplicas {
+    w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", sts.Namespace, sts.Name, sts.Status.UpdatedReplicas, expectedReplicas)
+    return false
+}
+
+if int(sts.Status.ReadyReplicas) != replicas {
+    w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
+    return false
+}
+```
+
+- You can tell if a `StatefulSet` is ready by: `UpdatedReplicas` == `replicas` -
+  `partition` && `ReadyReplicas` == `replicas`
+
+???
+
+- Similar to `DaemonSets`, you need to first check if all of the pods are
+  scheduled, because the `ReadyReplicas` number includes previous specs that are
+  running
+- However, even if you are partitioning, you should expect all of the old pods
+  _and_ the new pods to be ready and equal to the number of desired replicas
+
+---
+layout: false
 # Using object statuses
 #### Gotchas, caveats, provisos
 
+- Always validate your assumptions
+
 ???
 
-TODO: Talk about how ingress status doesn't work like you think
+- In summary, there are a lot of gotchas and things to be aware of for using
+  status object. Each object behaves differently and the numbers can each mean
+  different things even if they are named the same. 
+- Because of the extensible nature of the kubernetes API and the seemingly
+  infinite knobs you can tweak, make sure you don't assume that a status is
+  giving you the correct info (ask me how I know)
+
+--
+count: false
+- Ingress status does not work how you think. To quote
+  [specifically](https://kubernetes.slack.com/archives/C09QYUH5W/p1572019798187300):
+
+???
+
+- One big heads up I recently learned is how the ingress status works
+
+--
+count: false
+> no [the status] is not required. It would make it also complicated if you have
+> one controller that creates the L4 LB and another controller that does the L7
+> routing. In some controllers you can have L4 and L7 in one, such that you have
+> the optional flag.
+
+--
+count: false
+- Last but not least: Remember Kubernetes uses eventual consistency
+
+???
+
+- This means that the status does not always perfectly reflect reality. Although
+  it does 98% of the time
 
 ---
-
+layout: true
 # 3-way patches
 
-???
-
-This is simpler than you might think
-
 ---
 
-# Object Building
-#### Unstructured vs. Structured
+- `k8s.io/apimachinery/pkg/util/strategicpatch`
+- `k8s.io/apimachinery/pkg/types`
 
 ???
-
-TODO: Make sure to note schema registration
-
----
-
-# Object Building
-#### Conversion
+- First thing to know about are these two packages. The strategic patch utility
+  has some super handy functions for generating patch objects to send to the
+  kubernetes API and the types package contains the constants for the various
+  patch types. You'll see these referenced in the next slides
 
 ---
 
+???
+
+- We have a handy function called `createPatch` in Helm that helps us do this.
+  So let's break down the steps to creating a 3-way patch
+
+--
+count: false
+
+```go
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+    oldData, err := json.Marshal(current)
+    if err != nil {
+        return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
+    }
+    newData, err := json.Marshal(target.Object)
+    if err != nil {
+        return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
+    }
+```
+
+???
+- This function is generic and works for any kubernetes type. I'll dig deeper
+  into the resource package later on, but an `Info` is a pretty helpful wrapper
+  around a standard `runtime.Object` that contains a REST client configuration
+  used to update or fetch its data.
+- `current` in this function is the object that was originally used to create or
+  update its state in storage (such as a file on your machine)
+- The first step is to marshal all the data you have out to JSON so it can be
+  used to create a JSON patch
+
+---
+
+```go
+helper := resource.NewHelper(target.Client, target.Mapping)
+currentObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+if err != nil && !apierrors.IsNotFound(err) {
+    return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
+}
+
+currentData, err := json.Marshal(currentObj)
+if err != nil {
+    return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
+}
+```
+
+???
+- This next block is where we fetch the current state of the object. `NewHelper`
+  is part of the resource package and just creates a new client. However, if you
+  are just using the plain `Get` methods of the Kubernetes clientset, you'll
+  need to strip off the status object and a few other fields because you can't
+  specify the export options with `Get`
+- When you are fetching the current data, generally it is ok if it is not found.
+  Generally that means the object was unintentionally deleted or was never
+  created
+- Once you have the data, you also marshal that out to JSON
+
+---
+##### WARNING: Super Advanced
+
+```go
+// Get a versioned object
+versionedObject := AsVersioned(target)
+
+if _, ok := versionedObject.(runtime.Unstructured); ok {
+    // fall back to generic JSON merge patch
+    patch, err := jsonpatch.CreateMergePatch(oldData, newData)
+    return patch, types.MergePatchType, err
+}
+```
+
+???
+
+- As noted, this is a super advanced use case that probably 90% of you will
+  never need, but it is extremely useful for the 10% who do. So I put it in here
+  for people to reference.
+- `AsVersioned` does some magic to make sure we have a structured kubernetes
+  object. I'll cover how build and version objects in the next section 
+- Unstructured objects, such as CRDs, may not have an not registered error
+  returned from ConvertToVersion. Anything that's unstructured should use the
+  jsonpatch.CreateMergePatch which is just a simple two way merge. Strategic
+  Merge Patch is not supported on objects like CRDs.
+
+--
+count: false
+
+```go
+versionedObject := target.Object.(*appsv1.Deployment)
+```
+
+???
+- If you aren't using the advanced use case, you should just type assert your
+  object as shown here. You will need a typed object for the next step
+
+---
+
+```go
+patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
+if err != nil {
+    return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
+}
+
+patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
+```
+
+???
+- The patch metadata generation is what requires a versioned object. This is
+  because under the hood it is doing some reflection to figure out the kind
+- The last step is actual patch generation where you pass your original/old
+  data, the new desired state, and the current state of the object (in that
+  order) and the generated patch metadata. The boolean parameter specifies if
+  you want to overwrite keys that already exist
+
+---
+
+```go
+if patch == nil || string(patch) == "{}"
+```
+
+```go
+Patch("the name", types.StrategicMergePatchType, patch)
+```
+
+???
+- Two final notes here. First off, one of the nice things about doing things
+  with a patch is that you can do this check to see if there were no changes
+- That last thing is the actual patch creation. All of the `Patch` methods on
+  the clientset have the same signature as shown here
+
+---
+layout: true
 # Validation
 
-???
+---
 
-TODO: Figure out if a CRD validation example is needed
+- The short way of getting a validator is to use a `Factory` from
+  `k8s.io/kubectl/pkg/cmd/util`
+- However, for our own enjoyment, let's take a look at how to use validation
+  manually
+
+???
+- We'll look at how the factory generates 
+
+---
+#### Packages to know about
+- `k8s.io/kubectl/pkg/util/openapi`
+- `openapivalidation "k8s.io/kubectl/pkg/util/openapi/validation"`
+- `k8s.io/kubectl/pkg/validation`
 
 ---
 
+```go
+func (f *factoryImpl) OpenAPISchema() (openapi.Resources, error) {
+    discovery, err := f.clientGetter.ToDiscoveryClient()
+    if err != nil {
+        return nil, err
+    }
+
+    // Lazily initialize the OpenAPIGetter once
+    f.openAPIGetter.once.Do(func() {
+        // Create the caching OpenAPIGetter
+        f.openAPIGetter.getter = openapi.NewOpenAPIGetter(discovery)
+    })
+
+    // Delegate to the OpenAPIGetter
+    return f.openAPIGetter.getter.Get()
+}
+```
+
+???
+
+- First off, how to get the OpenAPI data
+- Please note that this `once` thing looks complicated. If you wanted to do it
+  yourself, you probably wouldn't need to worry about this
+- Note the use of the discovery client here. You'll have to have one
+  constructed. Everyone know what the discovery client does?
+
+---
+
+```go
+func (f *factoryImpl) Validator(validate bool) (validation.Schema, error) {
+    if !validate {
+        return validation.NullSchema{}, nil
+    }
+
+    resources, err := f.OpenAPISchema()
+    if err != nil {
+        return nil, err
+    }
+
+    return validation.ConjunctiveSchema{
+        openapivalidation.NewSchemaValidation(resources),
+        validation.NoDoubleKeySchema{},
+    }, nil
+}
+```
+
+???
+- Basically, no validation is as easy as using the NullSchema
+- The last step is "joining" the two schemas together
+- The schemas you see here are all of the ones that are exposed, however there
+  is a simple interface to implement if you have some advanced custom schema you
+  wish to use
+
+---
+layout: true
+# Object Building
+
+---
+#### Unstructured vs. Structured
+
+- "Structured" objects are exactly what you'd think they are: concrete
+  Kubernetes object types
+- Kubernetes approaches "generic" objects through the use of something called
+  "unstructured" objects
+
+---
+#### Unstructured vs. Structured 
+
+```go
+type Unstructured interface {
+    Object
+    // NewEmptyInstance returns a new instance of the concrete type containing only kind/apiVersion and no other data.
+    // This should be called instead of reflect.New() for unstructured types because the go type alone does not preserve kind/apiVersion info.
+    NewEmptyInstance() Unstructured
+    // UnstructuredContent returns a non-nil map with this object's contents. Values may be
+    // []interface{}, map[string]interface{}, or any primitive type. Contents are typically serialized to
+    // and from JSON. SetUnstructuredContent should be used to mutate the contents.
+    UnstructuredContent() map[string]interface{}
+    // SetUnstructuredContent updates the object content to match the provided map.
+    SetUnstructuredContent(map[string]interface{})
+    // IsList returns true if this type is a list or matches the list convention - has an array called "items".
+    IsList() bool
+    // EachListItem should pass a single item out of the list as an Object to the provided function. Any
+    // error should terminate the iteration. If IsList() returns false, this method should return an error
+    // instead of calling the provided function.
+    EachListItem(func(Object) error) error
+}
+```
+
+???
+- Unstructured objects are technically a go interface that looks like this.
+- It wraps a traditional Object and contains the raw data for an object
+- This is useful for CRD instances or if you don't care about having the actual
+  objects
+
+---
+#### Building Objects from Manifests
+
+- `k8s.io/cli-runtime/pkg/resource`
+
+```go
+builder := resource.NewBuilder(getter)
+infos, err := builder.ContinueOnError().
+        NamespaceParam(namespace).
+        DefaultNamespace().
+        Flatten().
+        Unstructured(). // Only if you want unstructured
+        Schema(schema).
+        Stream(reader, "").
+        Do().Infos()
+```
+
+???
+- This is the package that you'll use to build objects from a stream of incoming
+  documents
+- It is probably one of the more funky Go things you'll see
+- You need to pass a getter that implements the RESTClientGetter interface,
+  which we'll cover later on
+- Let's step through each one of these functions
+
+---
+
+#### Conversion
+
+```go
+func AsVersioned(info *resource.Info) runtime.Object {
+	return convertWithMapper(info.Object, info.Mapping)
+}
+
+func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Object {
+	var gv = runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
+	if mapping != nil {
+		gv = mapping.GroupVersionKind.GroupVersion()
+	}
+	if obj, err := runtime.ObjectConvertor(scheme.Scheme).ConvertToVersion(obj, gv); err == nil {
+		return obj
+	}
+	return obj
+}
+```
+
+???
+- In Helm, we have this `AsVersioned` method. It is specifically designed for
+  the resource Infos you've been seeing, but it can easily be designed for more
+  generic usage
+- The GroupVersioner interface can be taken from any group version kind or you
+  can use the default like we do here using `runtime.GroupVersioner`
+- Please note the use of scheme and schema here, which leads to a caveat
+
+---
+#### Conversion: A caveat
+
+```go
+import(
+    apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+    "k8s.io/client-go/kubernetes/scheme"
+)
+
+func yourClientCreate() {
+    if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+        // This should never happen.
+        panic(err)
+    }
+    ...
+}
+```
+
+???
+
+- When you are using scheme, you have to make sure types are registered. If you
+  are handling CRDs, they are not part of the schema by default, so you'll
+  definitely need to add things to the schema like so
+- In Helm we are registering things when we create our client, though you can do
+  it where you want too
+- Registering to the scheme is global
+
+---
+layout: true
 # Discovery Client and Cache
+
+---
 #### Under the hood details
 
+- You can find the packages it uses in `k8s.io/client-go/discovery/cached`
+- There are two options to cache data: disk and in-memory. Disk is the default
+- If using disk, it will create a cache path for your specfic server like so:
+  `computeDiscoverCacheDir(filepath.Join(homedir.HomeDir(), ".kube", "cache",
+  "discovery"), config.Host)`
+
+???
+- The compute cache dir function uses the server host name and collapses any
+  non-supported characters into a name that will likely not collide. So you can
+  go look in your home dir and find these caches if you wanted to
+
+--
+
+```go
+wg := &sync.WaitGroup{}
+resultLock := &sync.Mutex{}
+for _, apiGroup := range apiGroups.Groups {
+    for _, version := range apiGroup.Versions {
+        groupVersion := schema.GroupVersion{Group: apiGroup.Name, Version: version.Version}
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            defer utilruntime.HandleCrash()
+
+            apiResourceList, err := d.ServerResourcesForGroupVersion(groupVersion.String())
+```
+
 ???
 
-TODO: Review the various parts of the code and what it is doing to cache things
+- So under the hood, if you have an empty cache, it will make calls to every
+  single API endpoint (starting with the top level `/apis` call, which lists all
+  available APIs) to discover what APIs are available. This is used for
+  validation and constructing clients. But note that it is a bit heavier on the
+  server than you'd think
 
 ---
-
-# Discovery Client and Cache
 #### Cache invalidation
 
+- Reasons to invalidate your cache:
+  - New CRD installed (probably the most common)
+  - API server upgrade
+  - New API Extension or any other type of extension point that adds an API
+    version
+- How do you do it?
+
+```go
+discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+if err != nil {
+    return err
+}
+discoveryClient.Invalidate()
+// Give time for the CRD to be recognized.
+if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+    return err
+}
+// Make sure to force a rebuild of the cache.
+discoveryClient.ServerGroups()
+```
+
 ???
 
-TODO: Answer why you'd want to invalidate the discovery cache
+- So why would you want to invalidate the cache? In Helm we do it explicitly
+  after installing a CRD because otherwise Helm has an invalid list of API
+  versions, which makes its job of validating difficult
+- Luckily, it is extremely simple to do this if you have a cached discovery
+  client available (which is generally the standard client available). If, as
+  part of your code, you are adding the new CRD or API version, you should wait
+  for the CRD to reach an `Established` state. 
+- Then you should call something that will rebuild the cache for you (like
+  `ServerGroup`). Why? Because if you use your clientset elsewhere by
+  reconstructing it, the "invalidated" flag will be unset and it will use the
+  old cache if it hasn't expired
 
 ---
+layout: true
 
 ## Little Known Kubernetes Packages
-#### k8s.io/kubernetes/deployment/util
+
+---
+#### k8s.io/kubernetes/pkg/controller/deployment/util
+
+- This is one of many useful util packages in the controllers package
+- Other helpful functions include:
+  - `DeploymentComplete`: Returns true if _all_ of the new pods are running
+  - `ListPods`: lists all the pods the deployment targets
+  - `Max*`: Functions that get the computed values for things like surge, max
+    unavailable, etc.
+- One big con to keep in mind: You'll be pulling in mainline k8s as a dependency
 
 ???
 
-TODO: Show the Helm code we copied over
+- Most of the other controllers like `DaemonSets` and `PersistentVolumes` have
+  util packages
+- You saw how we used it to get `MaxUnavailable` and the latest replica set, but
+  here are some of the other helpful functions there
 
 ---
-
-## Little Known Kubernetes Packages
 #### sigs.k8s.io/yaml
 
+- A fork of `github.com/ghodss/yaml` optimized for kubernetes marshalling and
+  unmarshalling
+- It can also convert YAML to JSON and JSON to YAML
+
 ---
 
-## Little Known Kubernetes Packages
 #### k8s.io/cli-runtime/pkg/resource
+
+- Contains several helpful methods and objects for handling RESTful calls to get
+  Kubernetes (or even Kubernetes-like) objects:
+  - `Info`: A Kubernetes object wrapper that contains all the information to
+    make API calls for the object
+  - `Visitor`: A way to iterate over a generic list of Kubernetes objects
+  - `Helper`: Generic client for fetching resources using REST calls
 
 ???
 
-TODO: Talk about the flexibility of this package
+- If you are looking for flexibility in how you handle your kubernetes objects.
+  This is the package you are looking for
+- `Info` is extremely useful as it can handle typed or untyped objects
 
 ---
-
-## Little Known Kubernetes Packages
 #### k8s.io/cli-runtime/pkg/genericclioptions
 
+- An alternate way to get a clientset
+- `ConfigFlags` is your friend. 
+  - You can use `NewConfigFlags(true)` to get the `RESTClientGetter`
+  - `getter.ToRESTConfig()` then gives you the config needed to set up a
+    clientset
+
+???
+- You saw this package pop up multiple times in previous examples, but
+  essentially it is an alternate way to get a clientset, although with some
+  other helpful options
+- There are plenty of other things in this package you can take a look at, but
+  one of the most useful in my opinion is the `ConfigFlags` type.
+- The nice thing about using this package over the `clientcmd` package in
+  client-go is that you have much more flexibility and options. Easy access to
+  REST meta mappings and it can be used directly with the `resource` package we
+  just looked at
+
 ---
 
+#### k8s.io/apimachinery/pkg/util/intstr
+
+- `GetValueFromIntOrPercent`: A nice shorthand to parse out a computed int value
+- Or, you can use `Parse` on a string value to get the `IntOrString` type that
+  has even more methods
+
+???
+- I'll end with the most simple, but still useful package
+- This is a handy little utility for converting all of those fields that can be
+  an int value or a string in YAML
+
+---
+
+layout: false 
 class: middle, center
 # Thank You
 
