@@ -46,8 +46,6 @@ class: middle, center
 - We may not have time to go over all of the points here, but I will be breezing
   along fairly rapidly. There is a link to the slides at the end so you can look
   over them at your lesiure later
-- I plan to stop briefly for questions at the end of each topic so you don't
-  have to hold on to them as we go through the rest of the topics
 
 ---
 
