@@ -1,29 +1,37 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <title>Advanced Interactions with Kubernetes</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack-subset.css'>
+
     <style type="text/css">
-      body {
-  font-family: 'Avenir Next', 'Hiragino Kaku Gothic ProN', 'Meiryo', 'メイリオ', sans-serif;
-}
-h1, h2, h3 {
-  font-weight: bold;
-}
-.remark-code,
-.remark-inline-code {
-  font-family: 'Menlo', 'Monaco', 'Courier new', monospace;
-}
+        body {
+            font-family: 'Open Sans', sans-serif;
+        }
 
-.remark-slide-content.inverse {
-  color: #f3f3f3;
-  background-color: #272822;
-}
+        h1,
+        h2,
+        h3 {
+            font-weight: bold;
+        }
 
+        .remark-code,
+        .remark-inline-code {
+            font-family: 'Hack', monospace;
+        }
+
+        .remark-slide-content.inverse {
+            color: #f3f3f3;
+            background-color: #272822;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <textarea id="source">class: middle, center
 # Advanced Interactions with Kubernetes
 ### As Taught by Helm
@@ -845,16 +853,17 @@ class: middle, center
 ### [https://slides.oftaylor.com/AdvancedKubernetesInteractions/](https://slides.oftaylor.com/AdvancedKubernetesInteractions/)
 </textarea>
     <script src="remark.js"></script>
-    
+
     <script>
-      window.slideshow = remark.create({"ratio":"16:9","navigation":{"scroll":false},"slideNumberFormat":"%current%/%total%","highlightLanguage":"go","highlightStyle":"monokai","highlightLines":true})
+        window.slideshow = remark.create({ "ratio": "16:9", "navigation": { "scroll": false }, "slideNumberFormat": "%current%/%total%", "highlightLanguage": "go", "highlightStyle": "monokai", "highlightLines": true })
     </script>
     <script>
-      
-      ;window.LiveReloadOptions = {
-        host: 'localhost',
-        port: '35729'
-      };
+
+            ; window.LiveReloadOptions = {
+                host: 'localhost',
+                port: '35729'
+            };
     </script>
-  </body>
+</body>
+
 </html>

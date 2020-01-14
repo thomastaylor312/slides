@@ -1,0 +1,10 @@
+title: "DeisLabs: What's Cooking"
+dest: "./"
+remarkConfig:
+  ratio: "16:9"
+  navigation:
+    scroll: false
+  slideNumberFormat: "%current%/%total%"
+  highlightLanguage: "go"
+  highlightStyle: "monokai"
+  highlightLines: true
