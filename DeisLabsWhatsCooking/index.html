@@ -67,9 +67,9 @@ background-size: contain
 - Deis Labs is a shoutout to Deis, the organization where many of us started our
   journey into Kubernetes and Open Source. If you hadn't heard of Deis, it was a
   startup working on Kubernetes and containers tooling and was acquired by
-  Microsoft
+  Microsoft. Most of us have been doing for a while
 - Some of the people on this team created Phippy and some of the other
-  characters described here.
+  characters showed here
 - Our goal is to create great open source software and build healthy, diverse
   communities for those projects
 - Most people, when they hear about Microsoft doing open source, are fairly
@@ -79,7 +79,7 @@ background-size: contain
   technically owned by the CNCF and worked on by many other companies. Like I
   said before, I am going to talk about some of our projects and how they can
   help you, but I will give you honest opinions about our own projects and will
-  talk about other technologies
+  talk about any other technologies that interest you
 
 --
 
@@ -89,6 +89,9 @@ background-size: contain
 ## https://github.com/deislabs
 ]
 ]
+
+???
+- You can find most of our projects or more information at these links
 
 ---
 # The Menu
@@ -268,7 +271,7 @@ class: center, middle
   some infrastructure first and then configure a few data bases, and run some
   configuration scripts, you can put that all into a bundle, which is then kinda
   like a good old installer on your computer
-- One of my favorite things about this projects is it is completely cloud
+- One of my favorite things about this project is it is completely cloud
   agnostic. It is not some Microsoft specific thing. In fact, this spec was
   written in collaboration with other companies. A CNAB bundle can be composed
   to utilize whatever infra or services you require - there’s no vendor lock in.
@@ -321,9 +324,22 @@ background-image: url(./assets/porter.png)
 
 ---
 # VS Code Extensions
-TODO
+- View and manage Kubernetes clusters
+- Build and run containers from Dockerfiles
+- Intellisense for Kubernetes & Helm resources
+- Works anywhere (Azure, Minikube, KIND, AWS, GCP, etc)
 
-.footnote[.center[https://azure.github.io/vscode-kubernetes-tools/]]
+<div style="padding-top: 115px;"></div>
+.center[
+### https://azure.github.io/vscode-kubernetes-tools/
+]
+
+???
+- One that people generally are surprised that we work on are the Kubernetes
+  tools for VS Code. Out of curiosity, how many people here use VS Code?
+- Once again: If you worry about using Microsoft things, there is no need to
+  worry. Everything here works with _any_ Kubernetes cluster. The goal here was
+  to have a solid set of tools to make people's lives easier
 
 ---
 layout: false
@@ -331,8 +347,9 @@ layout: false
 .left-column[
 - WASM
 - Moar Rust
-- Brigade 2!
-- CNAB 1.0 Spec
+- [Brigade 2.0!](https://github.com/brigadecore/brigade/issues?q=is%3Aissue+is%3Aopen+label%3A2.0)
+- CNAB 1.1 (and maybe 2.0?) Spec
+  - [CNAB Declarative Installation](https://github.com/cnabio/cnab-spec/issues/285)
 ]
 .right-column[
 .middle[<img src="https://media1.tenor.com/images/a245032e943ceb833ca4328606d30e05/tenor.gif?itemid=3554959" width="500">]
@@ -341,6 +358,10 @@ layout: false
 ???
 - These are some of the things we are investigating or working on (I've added
   links where I can)
+- We are starting to use and/or contribute more to various Rust projects.
+- The declarative stuff is really interesting because it is about making a spec
+  that knows more about what is going to happen inside the bundle, whereas right
+  now it doesn't know what is going on inside
 
 ---
 # Main Course
