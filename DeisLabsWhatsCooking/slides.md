@@ -1,4 +1,5 @@
 class: center, middle
+background-image: url(assets/icon-final.eps)
 <style>
 .left-column  { width: 49%; float: left; }
 .right-column { width: 49%; float: right; }
@@ -90,31 +91,127 @@ background-size: contain
   time!
 
 ---
-layout: true
+class: center, middle
 # Appetizers
 
 ---
-### Helm
-TODO
+background-image: url(./assets/helm.svg)
+
+???
+- How many of you have heard of Helm? How many have used it?
+- And just out of curiosity, how many of you have gotten waaaaay to deep into it?
 
 ---
-### Brigade
-TODO
+class: center, middle
+## The package manager for Kubernetes
+#### Helm is the best way to find, share, and use software built for Kubernetes
+
+![](assets/boat.gif)
 
 ---
-### CNAB
+# Helm
+- What is Helm?
+- How and why do people use it?
+
+.footnote[.center[https://helm.sh]]
+
+???
+- So let's talk Helm. What’s Helm and why do people use it? It’s a package
+  manager like Homebrew, apt, and yum. 
+- Helm is now a CNCF incubating (and hopefully soon graduating) project - we
+  donated the IP to the CNCF. 
+- At Microsoft, we use Helm in AKS, azure dev spaces, azure pipelines, azure
+  devops, and a whole host of other internal products
+- But let's talk a bit more about why Helm could be useful for you
+
+---
+# Helm
+.left-column[
+.center[
+<img src="./assets/complexity.png" width="150">
+#### Manage complexity
+
+<img src="./assets/sharing.png" width="125">
+#### Simple sharing
+]
+]
+
+.right-column[
+.center[
+<img src="./assets/updates.png" width="110">
+<h4 style="padding-bottom: 33px; margin-top: -17px;">Easy updates</h4>
+
+<img src="./assets/rollbacks.png" width="125">
+#### Rollbacks
+]
+]
+
+.footnote[.center[https://helm.sh]]
+
+???
+NOTE: Depending on how many people are really experienced with Helm, this could
+be trimmed or skipped
+- As you can see here, these are 4 of the biggest things Helm can help you with
+  (though there are many more useful features). So let's dig into each one
+- Manage complexity: Charts can describe complex apps; provide repeatable app
+  installs, and serve as a single point of authority
+- Easy updates: Take the pain out of updates with in-place upgrades and custom
+  hooks. Basically, you can manage all of the Kubernetes lifecycle of your app
+  with Helm (please note that we can't manage all of your app for you :D)
+- Simple sharing: Charts are easy to version, share, and host on public or
+  private servers. Also, with the release of Helm 3, we also have library
+  charts, which are reusable components/templates that can be shared to reduce
+  copy/pasting
+- Rollbacks: This is related to the easy updates, but you also get the ability
+  to rollback. You fat finger a config value or accidently deploy a bug? It is
+  as simple as `helm rollback`
+- Something else to know is that Helm is easily extendible using plugins or the
+  Go SDK
+
+---
+background-image: url(./assets/brigade.svg)
+
+???
+- Stuff here
+
+---
+# Brigade
 TODO
+
+.footnote[.center[https://brigade.sh]]
+
+---
+background-image: url(./assets/cnab.svg)
+
+???
+- Cloud Native Application Bundles -> CNAB
+
+---
+# CNAB
+TODO
+
+.footnote[.center[https://cnab.io]]
 
 ???
 Focus this more on the open spec and save cool details for Porter
 
 ---
-### Porter
-TODO
+background-image: url(./assets/porter.png)
+
+???
+- Porter is a tool for managing and installing your Bundles. CNAB is the spec, Porter is an implementation
 
 ---
-### VS Code Extensions
+# Porter
 TODO
+
+.footnote[.center[https://porter.sh]]
+
+---
+# VS Code Extensions
+TODO
+
+.footnote[.center[https://azure.github.io/vscode-kubernetes-tools/]]
 
 ---
 layout: false
