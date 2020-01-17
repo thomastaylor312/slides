@@ -106,6 +106,10 @@ class: center, middle
 ## The package manager for Kubernetes
 #### Helm is the best way to find, share, and use software built for Kubernetes
 
+.center[
+### https://helm.sh
+]
+
 ![](assets/boat.gif)
 
 ---
@@ -113,6 +117,7 @@ class: center, middle
 - What is Helm?
 - How and why do people use it?
 
+<div style="padding-top: 378px"></div>
 .footnote[.center[https://helm.sh]]
 
 ???
@@ -172,13 +177,50 @@ be trimmed or skipped
 background-image: url(./assets/brigade.svg)
 
 ???
-- Stuff here
+Brigade is event driven scripting for Kubernetes. Kubernetes is a declarative
+system; everything you define is the desired state and reconciled by
+controllers... but what if you need to do some things based on events? If this,
+then do that... workflow engine stuff... what do you do? Enter Brigade. 
+
+---
+class: center, middle
+## Run scriptable, automated tasks in the cloud — as part of your Kubernetes cluster
+
+### https://brigade.sh
+
+???
+The overly simple explanation is that Brigade is a Kubernetes native Thing Doer™
 
 ---
 # Brigade
-TODO
+.left-column[
+.center[
+<img src="./assets/pipes.png" width="120">
+### Simple, powerful pipes
+]
+]
+
+.right-column[
+.center[
+<img src="./assets/cluster.png" width="190">
+### Runs inside your cluster
+]
+]
 
 .footnote[.center[https://brigade.sh]]
+
+???
+- So let's dig in to what it actually is. The more complex explanation is that
+  it’s a JavaScript runtime - you can define complex pipelines in Brigade and
+  model any arbitrary workflow that you want to in Javascript.
+- Simple pipes: Each project gets a brigade.js config file, which is where you
+  can write dynamic, interwoven pipelines and tasks for your Kubernetes cluster
+- Runs in cluster: By running Brigade as a service inside your Kubernetes
+  cluster, you can harness the power of millions of available Docker images
+  - Think automation, open source, in-cluster developer-friendly operations tool
+    with a one-line helm install. If you are building a platform on top of
+    Kubernetes, this can be extremely useful for you for automating operations
+    and deployments
 
 ---
 background-image: url(./assets/cnab.svg)
@@ -187,25 +229,69 @@ background-image: url(./assets/cnab.svg)
 - Cloud Native Application Bundles -> CNAB
 
 ---
-# CNAB
-TODO
+class: center, middle
+## Spec for packaging distributed apps
 
-.footnote[.center[https://cnab.io]]
+<img src="./assets/cnab-notext.svg" width="250">
+
+### https://cnab.io
 
 ???
-Focus this more on the open spec and save cool details for Porter
+- CNAB bundles facilitate the bundling, installing and managing of
+  container-native apps — and their coupled services. So if you need to lay down
+  some infrastructure first and then configure a few data bases, and run some
+  configuration scripts, you can put that all into a bundle, which is then kinda
+  like a good old installer on your computer
+- One of my favorite things about this projects is it is completely cloud
+  agnostic. It is not some Microsoft specific thing. In fact, this spec was
+  written in collaboration with other companies. A CNAB bundle can be composed
+  to utilize whatever infra or services you require - there’s no vendor lock in.
+- CNAB bundles can be used to easily deliver apps across teams, organizations
+  and marketplaces - even shared offline. One of the questions we've heard a lot
+  of is about using it for airgapped environments, meaning no internet
+  connection. Bundles can be built so everything they need to run is inside of
+  it (called a thick bundle).
+- A CNAB bundle can be cryptographically signed, attested, and verified to
+  ensure a trustworthy source, which is useful for the aforementioned airgap
+  situations.
 
 ---
 background-image: url(./assets/porter.png)
 
 ???
-- Porter is a tool for managing and installing your Bundles. CNAB is the spec, Porter is an implementation
+- Porter is a tool for managing, create, and installing your Bundles. CNAB is
+  the spec, Porter is an implementation
+- Porter makes using CNAB easier - it’s a declarative bundle builder. When we
+  deploy to the cloud, most of us aren’t dealing with just a single cloud
+  provider or toolchain. The simplest of applications today need nginx, Let’s
+  Encrypt, persistent file storage, DNS, and somewhere in there is your
+  application. One app is installed with Helm, another with the cloud provider’s
+  cli and it’s all glued together with magic bash scripts. That is a lot to
+  figure out and put together yourself. So let's go into a few details.
 
 ---
 # Porter
-TODO
+- Install your app and its baggage
+- Mixins!
+- Dependency and package management
 
-.footnote[.center[https://porter.sh]]
+<div style="padding-top: 150px;"></div>
+.center[
+### https://porter.sh
+]
+
+???
+- Bundle up not just the app, but everything it needs to run in the cloud. Like
+  I mentioned before, this bundle can pull down all the images and resources
+  needed to manage the bundle
+- Mixings are the Mixins are various actions that can be performed. You can use
+  mixins for common tools and clouds or depend on existing bundles
+- You can package up and version your bundle and distribute it for others to use
+  with tools like an OCI registry
+- To emphasize this again: this is completely open and not tied specifically to
+  Azure. There are mixins for most cloud providers and several common cloud
+  tools. We even have a demo using Terraform and Digital Ocean with Porter
+  bundles
 
 ---
 # VS Code Extensions
@@ -234,3 +320,9 @@ layout: false
 # Main Course
 
 What interests you? Any topics or projects sound interesting?
+
+---
+class: center, middle
+# Thank you!
+
+https://slides.oftaylor.com/DeisLabsWhatsCooking/
