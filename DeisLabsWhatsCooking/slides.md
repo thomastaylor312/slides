@@ -1,5 +1,4 @@
 class: center, middle
-background-image: url(assets/icon-final.eps)
 <style>
 .left-column  { width: 49%; float: left; }
 .right-column { width: 49%; float: right; }
@@ -8,7 +7,7 @@ background-image: url(assets/icon-final.eps)
 </style>
 # DeisLabs: What's Cooking
 #### Taylor Thomas - Senior Software Engineer at Microsoft Azure
-
+.bottom[<img src="./assets/icon-final.eps" width="200">]
 ---
 # Who am I?
 
@@ -56,7 +55,7 @@ background-size: contain
   talk about any other technologies that interest you
 
 --
-
+<div style="padding-top: 300px"></div>
 .middle[
 .center[
 ## https://deislabs.io
@@ -126,8 +125,8 @@ class: center, middle
 ???
 - So let's talk Helm. What’s Helm and why do people use it? It’s a package
   manager like Homebrew, apt, and yum. 
-- Helm is now a CNCF incubating (and hopefully soon graduating) project - we
-  donated the IP to the CNCF. 
+- Helm is now a CNCF (Cloud Native Computing Foundation) incubating (and
+  hopefully soon graduating) project - we donated the IP to the CNCF. 
 - At Microsoft, we use Helm in AKS, azure dev spaces, azure pipelines, azure
   devops, and a whole host of other internal products
 - But let's talk a bit more about why Helm could be useful for you
@@ -287,8 +286,8 @@ background-image: url(./assets/porter.png)
 - Bundle up not just the app, but everything it needs to run in the cloud. Like
   I mentioned before, this bundle can pull down all the images and resources
   needed to manage the bundle
-- Mixings are the Mixins are various actions that can be performed. You can use
-  mixins for common tools and clouds or depend on existing bundles
+- Mixins are various actions that can be performed. You can use
+  mixins for common tools and clouds
 - You can package up and version your bundle and distribute it for others to use
   with tools like an OCI registry
 - To emphasize this again: this is completely open and not tied specifically to
@@ -320,7 +319,7 @@ layout: false
 # The Future
 .left-column[
 - WASM
-- Moar Rust
+- More Rust
 - [Brigade 2.0!](https://github.com/brigadecore/brigade/issues?q=is%3Aissue+is%3Aopen+label%3A2.0)
 - CNAB 1.1 (and maybe 2.0?) Spec
   - [CNAB Declarative Installation](https://github.com/cnabio/cnab-spec/issues/285)
