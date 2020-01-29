@@ -1,0 +1,10 @@
+title: "Cambiar con Confianza: Lecciones Aprendidas de Helm 3"
+dest: "./"
+remarkConfig:
+  ratio: "16:9"
+  navigation:
+    scroll: false
+  slideNumberFormat: "%current%/%total%"
+  highlightLanguage: "go"
+  highlightStyle: "monokai"
+  highlightLines: true
