@@ -63,8 +63,11 @@ h1, h2, h3 {
 # Agenda
 
 - ¿Qué es Helm?
+
 - El Feo
+
 - El Malo
+
 - El Bueno
 
 ---
@@ -72,8 +75,11 @@ h1, h2, h3 {
 
 .left-column[
 - El administrador de paquetes para Kubernetes
+
 - Mas de 1 millón de descargas por mes
+
 - Muchas compañías grandes lo usan en producción
+
 - Lanzamos Helm 3 en Noviembre de 2019, nuestra primera versión mayor en mas de
   dos años
 ]
@@ -137,6 +143,7 @@ h1, h2, h3 {
   avanzados de Helm, pero el trabajo necessario fue demasiado grande. Si lo
   hubieramos hecho, tal vez no tendríamos Helm 3 todavía.
 --
+
 - Cuidar a su gente
 
 ???
@@ -153,23 +160,73 @@ h1, h2, h3 {
 ---
 # El Malo
 
+.left-column[
 - Trabajo con un único subproceso (single threaded)
+]
+
+.right-column[
+.middle[<img src="./assets/gasp.gif" style="padding-left: 60px;" width="450">]
+]
 
 ???
-- 
+- Porque habían tantos cambios requeridos para el código, decidimos que solo los
+  mantenedores principales podían trabajar durante la primera parte del
+  proyecto. Con todo honestidad, no sé si había otra manera de hacerlo en
+  nuestro caso, pero la decisión nos causó muchos problemas. Tales como esa
+  falta de personas que mencioné con las "cosas feas" y un retraso del proyecto.
+- Tengo sentimientos encontrados en cuanto a esta decisión. De un lado, nos
+  ayudó tener código mas organizado, pero del otro lado, nos causó estos
+  problemas mencionados.
 --
-- Unclear on how the community could help
+.left-column[
+- Confusión y falta de claridad de como la comunidad podían ayudar
+]
 
 ???
-
+- Este punto es relacionado con el primero. Por causa de nuestro trabajo con un
+  único subproceso los contribuidores tenían que aprender la mayoría del código
+  de nuevo. También con la falta de mantenedores, no nos comunicamos bien acerca
+  de nuestra plan aun después de terminar la primera parte del trabajo. Hablamos
+  en público en cuanto a nuestros planes, pero no organizamos bien nuestro
+  GitHub hasta el verano de 2019. Con todo esto, había mucha confusión entre los
+  integrantes de la comunidad hasta 2 o 3 meses antes del lanzamiento
 ---
 # Lecciones
 
+- Estructurar su trabajo para evitar "trabajo con un único subproceso"
+  - Mantengan sus pull requests y tareas lo mas enfocado y pequeño que sea
+    posible
+  - Organizar su proyecto bien desde el principio
+  - Tener más versiones mayores en seguida en vez de una version mayor muy
+    grande cada pocos años
+
+???
+- A veces, es impossible evitar esto, pero esfuercense por encontrar una
+  organización de tareas que facilite trabajo paralelo. Algunos ideas:
+  - Nuestra equivocación fue organizar nuestras tareas demasiado tarde en el
+    proceso
+  - Si es posible, consideren tener mas versiones mayores en seguida en vez de
+    una version mayor muy grande cada pocos años. Esto es algo que hemos
+    empezado considerar como mantenedores de Helm
+--
+
+- Comunicar los cambios planificados antemano
+
+???
+- Esto significa comunicarlo de todos las maneras posibles. Slack, correo
+  electronico, GitHub, etc. Yo sé que es una molestía, pero es sumamente
+  importante comunicarse. Si sus usuarios tienen el mapa vial, pueden prepararse
+  para los cambios y planificar el trabajo que ellos tienen que hacer para
+  adoptar los cambios que Uds. hacen. Para mi, si alguien me informa con
+  antelación lo que van a hacer, eso me hace muy feliz y tengo mas paciencia con
+  los problemas y equivocaciones que inevitablemente vendrán.
 ---
 # El Bueno
 
 - Migración
 - Compatibilidad con versiones anteriores
+- Colaboración con proyectos dependientes
+- Buen período de Beta
 
 ???
 - Aunque habían cosas malas, todavía hay muchas cosas buenas!
