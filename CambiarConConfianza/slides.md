@@ -197,16 +197,77 @@ class: middle, center
 ---
 # El Bueno
 
+.left-column[
 - Migración
-- Compatibilidad con versiones anteriores
-- Colaboración con proyectos dependientes
-- Buen período de Beta
+]
+
+.right-column[
+.middle[<img src="./assets/good.gif" style="padding-left: 50px;" width="450">]
+]
 
 ???
 - Aunque habían cosas malas, todavía hay muchas cosas buenas!
-  
+- Una de las cosas que hicimos muy bien fue la migración. Al lanzar Helm 3,
+  tambien lanzamos un plugin para migrar los datos e información de Helm 2 a
+  Helm 3. En ninguna manera es perfecto, pero ha funcionado bien para la mayoría
+  de nuestros usuarios.
+--
+
+.left-column[
+- Compatibilidad con versiones anteriores
+]
+
+???
+- Logramos compatibilidad con Helm 2 con la mayoría de funciones y tenemos bien
+  documentado las excepciones. Tambien se puede usar las 2 versiones juntos sin
+  tener problemas.
+--
+
+.left-column[
+- Buen período de Alpha y Beta
+]
+
+???
+- Tuvimos 3 meses de Alpha y Beta. Con este tiempo proyectos que dependen de
+  Helm tuvieron el tiempo para hacer cambios y nos dieron feedback. Con todo ese
+  tiempo, la comunidad encontró muchos de los problemas que quedaban y pudimos
+  resolverlos.
+--
+
+.left-column[
+- Apoyo para un año
+]
+
+???
+- Algo más que decidimos hacer fue apoyar Helm 2 por un año mas después del
+  lanzamiento de Helm 3. Hay muchas empresas grandes que no pueden adoptar or
+  usar la versión mas nueva. Para ayudar a estos usarios tener el tiempo para
+  cambiar, extendimos el tiempo de apoyo a un año
 ---
 # Lecciones
+
+- Facilitar migración
+  - Herramientas
+  - Guías _detalladas_
+  - Apoyar la versión previa
+
+???
+- Hacer todo lo posible para asegurar que el proceso de cambiar sea _fácil_. Si
+  sus usuarios tienen que hacer 15 pasos distintos, no les va a gustar y, mas
+  importantemente, habrán errores que tal vez impacten producción. Les pueden
+  ganar el respeto y confianza de sus usuarios si hacen que el proceso de
+  actualizar sea fácil y seguro. Esta confianza hace que sus trabajos sean mas
+  fáciles y que puedan hacer mas cambios en el futuro.
+--
+
+- Tener Alpha y Beta
+  - Cultivar una lista de "power users" y otros usuarios que quieran usar "la
+    cosa mas nueva"
+  - Comunicar y dar tiempo suficiente para que sus usuarios tengan el tiempo
+    para probarlo
+
+--
+- Tener un plan de apoyo y deprecación
 
 ---
 class: middle, center
