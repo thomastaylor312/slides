@@ -54,10 +54,10 @@ h1, h2, h3 {
 
 - Soy un ingeniero del Software en Azure enfocado en Helm, pero también con
   otros proyectos de código abierto. También trabajaba en AKS antes.
-- Entonces, por qué escuchar a lo que voy a decir?
+- Entonces, ¿por qué escuchar a lo que voy a decir?
 - He sido un mantenedor principal de Helm por 3 años
 - Hice mucho trabajo con Helm 3, tal como programar y planificar todo el proceso
-  de lanzamiento
+  de lanzamiento con los otros mantenedores
 
 ---
 # Agenda
@@ -70,11 +70,17 @@ h1, h2, h3 {
 ---
 # ¿Qué es Helm?
 
+.left-column[
 - El administrador de paquetes para Kubernetes
 - Mas de 1 millón de descargas por mes
 - Muchas compañías grandes lo usan en producción
 - Lanzamos Helm 3 en Noviembre de 2019, nuestra primera versión mayor en mas de
   dos años
+]
+
+.right-column[
+.middle[<img src="./assets/helm.svg" style="padding-left: 120px;" width="300">]
+]
 
 ???
 - ¿Cuántos han escuchado de Helm? ¿Lo han usado?
@@ -99,13 +105,25 @@ h1, h2, h3 {
 ]
 
 ???
-- Lua
+- Creo que el mejor ejemplo de esto fue lo que pasó con Lua. Pensamos en tener
+  Lua integrado en Helm para que los usuarios avanzados pudieran tener un
+  lenguaje real para hacer lo que querían. Eso llevó a mucha confusion en la
+  communidad y demoras con el proyecto. 
+- También pensamos en re-diseñar muchas partes del código para que fuera mas
+  fácil mantener. Pero también eso nos demoró porque no pudimos continuar con la
+  ayuda de la comunidad sin tener esa fundación y las interfaces programáticas.
 --
 .left-column[
 - Falta de personas
 ]
 
 ???
+- Tal vez este punto les parece un poquito interesante, pero fue algo muy "feo"
+  que aprendimos. Al empezar, solo 2 (o tal vez 3) tabajaban en Helm 3.
+  Eventualmente, llegamos a tener muchos mas. Eso fue, en parte, debido a otras
+  equivocaciones nuestras, pero también había falta de personas con tiempo. Hay
+  que recordar que esto no solo pasa con proyectos de código abierto, sino
+  también en proyectos de empresas.
 ---
 # Lecciones
 
@@ -114,12 +132,23 @@ h1, h2, h3 {
 ???
 - Aunque algo parece muy útil, tal vez no sea necesario. También pueden hacerlo
   mas tarde si es posible. Con Helm, aprendimos con rapidez que la "función" que
-  mas queían era retirar Tiller.
+  mas queían era retirar Tiller. Como dije antes, aprendimos esto con Lua. Era
+  algo muy interesante que podría haber sido muy util para los usuarios
+  avanzados de Helm, pero el trabajo necessario fue demasiado grande. Si lo
+  hubieramos hecho, tal vez no tendríamos Helm 3 todavía.
 --
 - Cuidar a su gente
 
 ???
-- Solo 1 o 2 personas podian trabajar y estaban quemandose (burning out)
+- Solo 2 o 3 personas podian trabajar y estaban quemandose (burning out). Si
+  quieren que su proyecto sea exitoso, tienen que cuidar a su gente y tener un
+  numero suficiente de personas para el proyecto. No puedo decir demasiado de
+  este punto. En caso de Helm, casi todos los mantenedores que trabajaban en
+  Helm 3 murieron de estrés por tener que contestar todas las preguntas de la
+  communidad al mismo tiempo en trabajar con el código. Con codigo abierto,
+  recuerden que los mantenedores son personas también y no existen para hacer lo
+  que quieren. Y, en contexto de proyectos de sus empresas, recuerden que sus
+  empleados harán su mejor trabajo cuando los tratan bien.
 
 ---
 # El Malo
@@ -132,10 +161,7 @@ h1, h2, h3 {
 - Unclear on how the community could help
 
 ???
---
-- Demasiado tiempo para completar trabajo
 
-???
 ---
 # Lecciones
 
