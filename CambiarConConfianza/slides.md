@@ -26,6 +26,7 @@ class: middle, center
 
 ???
 
+- Quiero presentarme
 - Soy un ingeniero del Software en Azure enfocado en Helm, pero también con
   otros proyectos de código abierto. También trabajaba en AKS antes.
 - Entonces, ¿por qué deben escuchar a lo que voy a decir?
@@ -43,6 +44,11 @@ class: middle, center
 - El Malo
 
 - El Bueno
+
+???
+- La meta de todo esto es hablar francamente de lo que hicimos bien y lo que
+  hicimos mal y las lecciones que Uds. pueden aprender. Espero que puedan usar
+  estas lecciones en sus propios proyectos y trabajos
 
 ---
 # ¿Qué es Helm?
@@ -67,7 +73,7 @@ class: middle, center
 - Todo esto significa que habríamos podido tener un gran impacto en muchas
   compañías si no hubieramos hecho buen trabajo con la nueva versión. También no
   podríamos quebrantar los paquetes que ya existían porque no queríamos que
-  nuestros usuarios tuvieran que cambiar todo para acutalizar
+  nuestros usuarios tuvieran que cambiar todo para acutalizar.
 - Y esto es todo que se requiere saber de Helm. Es un buen ejemplo de un
   proyecto que impacta a muchas personas y las lecciones que aprendimos durante
   nuestro trabajo en Helm 3. Espero que puedan aprender de nuestras
@@ -88,7 +94,9 @@ class: middle, center
 - Creo que el mejor ejemplo de esto fue lo que pasó con Lua. Pensamos en tener
   Lua integrado en Helm para que los usuarios avanzados pudieran tener un
   lenguaje real para hacer lo que querían. Eso llevó a mucha confusion en la
-  communidad y demoras con el proyecto. 
+  communidad y demoras con el proyecto. Prioritizamos funciones que solo algunos
+  usuarios querían en vez de enfocarnos en las funciones que la mayoría de
+  nuestros usuarios querían
 - También pensamos en re-diseñar muchas partes del código para que fueran mas
   fácil mantener. Pero también eso nos demoró porque no pudimos continuar con la
   ayuda de la comunidad sin tener esa fundación y las interfaces programáticas.
@@ -116,16 +124,18 @@ class: middle, center
   algo muy interesante que podría haber sido muy util para los usuarios
   avanzados de Helm, pero el trabajo necessario fue demasiado grande. Si lo
   hubieramos hecho, tal vez no tendríamos Helm 3 todavía.
+- Una manera de hacer esto es pedir comentarios de sus usuarios antes de
+  planificar. ¿Cuales son las funciones que ellos mas quieren?
 --
 
 - Cuidar a su gente
 
 ???
-- Solo 2 o 3 personas podian trabajar y estaban quemandose (burning out). Si
-  quieren que su proyecto sea exitoso, tienen que cuidar a su gente y tener un
-  numero suficiente de personas para el proyecto. No puedo decir demasiado de
-  este punto. En caso de Helm, casi todos los mantenedores que trabajaban en
-  Helm 3 murieron de estrés por tener que contestar todas las preguntas de la
+- Solo 2 o 3 personas podian trabajar y se estaban agotando. Si quieren que su
+  proyecto sea exitoso, tienen que cuidar a su gente y tener un numero
+  suficiente de personas para el proyecto. No puedo decir demasiado de este
+  punto. En caso de Helm, casi todos los mantenedores que trabajaban en Helm 3
+  murieron de estrés por tener que contestar todas las preguntas de la
   communidad al mismo tiempo en trabajar con el código. Con codigo abierto,
   recuerden que los mantenedores son personas también y no existen para hacer lo
   que quieren. Y, en contexto de proyectos de sus empresas, recuerden que sus
@@ -143,14 +153,17 @@ class: middle, center
 ]
 
 ???
-- Porque habían tantos cambios requeridos para el código, decidimos que solo los
-  mantenedores principales podían trabajar durante la primera parte del
-  proyecto. Con todo honestidad, no sé si había otra manera de hacerlo en
-  nuestro caso, pero la decisión nos causó muchos problemas. Tales como esa
-  falta de personas que mencioné con las "cosas feas" y un retraso del proyecto.
+- Eso significa que solo trabajamos con una cosa a la vez, tal como un trabajo
+  con un único subproceso. Porque habían tantos cambios requeridos para el
+  código, decidimos que solo los mantenedores principales podían trabajar
+  durante la primera parte del proyecto. Con todo honestidad, no sé si había
+  otra manera de hacerlo en nuestro caso, pero la decisión nos causó muchos
+  problemas. Tales como esa falta de personas que mencioné con las "cosas feas"
+  y un retraso del proyecto.
 - Tengo sentimientos encontrados en cuanto a esta decisión. De un lado, nos
   ayudó tener código mas organizado, pero del otro lado, nos causó estos
-  problemas mencionados.
+  problemas mencionados. Si lo hacen, hay que limitar el tiempo a lo mas mínimo
+  posible
 --
 .left-column[
 - Confusión y falta de claridad de como la comunidad podían ayudar
@@ -160,10 +173,10 @@ class: middle, center
 - Este punto es relacionado con el primero. Por causa de nuestro trabajo con un
   único subproceso los contribuidores tenían que aprender la mayoría del código
   de nuevo. También con la falta de mantenedores, no nos comunicamos bien acerca
-  de nuestra plan aun después de terminar la primera parte del trabajo. Hablamos
-  en público en cuanto a nuestros planes, pero no organizamos bien nuestro
-  GitHub hasta el verano de 2019. Con todo esto, había mucha confusión entre los
-  integrantes de la comunidad hasta 2 o 3 meses antes del lanzamiento
+  de nuestra plan hasta después de terminar la primera parte del trabajo.
+  Hablamos en público en cuanto a nuestros planes, pero no organizamos bien
+  nuestro GitHub hasta el verano de 2019. Con todo esto, había mucha confusión
+  entre los integrantes de la comunidad hasta 2 o 3 meses antes del lanzamiento
 ---
 # Lecciones
 
@@ -182,6 +195,14 @@ class: middle, center
   - Si es posible, consideren tener mas versiones mayores en seguida en vez de
     una version mayor muy grande cada pocos años. Esto es algo que hemos
     empezado considerar como mantenedores de Helm
+--
+
+- Asignar las tareas antes de empezar
+
+???
+- Como mantenedores de Helm, sabíamos, mas o menos, las tareas necesarias para
+  terminar Helm 3. Pero no las asignamos. Entonces fue mucho mas difícil
+  coordinar y seguir nuestro progreso
 --
 
 - Comunicar antemano los cambios planificados 
@@ -229,7 +250,7 @@ class: middle, center
 
 ???
 - Tuvimos 3 meses de Alpha y Beta. Con este tiempo proyectos que dependen de
-  Helm tuvieron el tiempo para hacer cambios y nos dieron feedback. Con todo ese
+  Helm tuvieron el tiempo para hacer cambios y nos dieron comentarios. Con todo ese
   tiempo, la comunidad encontró muchos de los problemas que quedaban y pudimos
   resolverlos.
 --
@@ -262,12 +283,12 @@ class: middle, center
 --
 
 - Tener Alpha y Beta
-  - Cultivar una lista de "power users" y otros usuarios que quieran usar "la
+  - Cultivar una lista de usuarios expertos y otros usuarios que quieran usar "la
     cosa mas nueva"
   - Comunicar y dar tiempo suficiente para que sus usuarios tengan el tiempo
     para probarlo
 ???
-- Una aclaración: esto no significa algo como blue/green or canary, es un tiempo
+- Una aclaración: esto no significa algo como blue/green o canary, es un tiempo
   en que sus usuarios pueden optar por probar la nueva versión
 - De nuevo, la comunicación es esencial 
 --
